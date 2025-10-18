@@ -1,8 +1,8 @@
 const std = @import("std");
 const minifb = @import("root.zig");
 
-pub fn main() !void{
-    var window = minifb.Window.open("my display", 800, 600) catch |err| {
+pub fn main() !void {
+    var window = minifb.Window.openEx("my display", 800, 600, .resizable) catch |err| {
         std.debug.print("Failed to open window: {}\n", .{err});
         return err;
     };

@@ -1,13 +1,28 @@
 const std = @import("std");
 
+const Application = struct {
+            
+};
+
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const mod = b.addModule("zig_minifb", .{
+    const mod = b.addModule("minifb", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
     });
 
+    const default_backend: []const u8 = switch (target.result.os.tag) {
+        .windows => "windows",
+        .macos => "macos",
+        .linux => "x11",
+        else => "x11",
+    };
+    const minifb_src_dir = "external/minifb/src";
+    var cFiles: std.ArrayList([]const u8) = .{};
+    try collectFiles(b.allocator, &cFiles, minifb_src_dir, default_backend);
+    defer cFiles.deinit(b.allocator);
+    
     const exe = b.addExecutable(.{
         .name = "zig_minifb",
         .root_module = b.createModule(.{
@@ -16,24 +31,14 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
             .link_libc = true,
             .imports = &.{
-                .{ .name = "zig_minifb", .module = mod },
+                .{ .name = "minifb", .module = mod },
             },
         }),
     });
 
-    const default_backend: []const u8 = switch (target.result.os.tag) {
-        .windows => "windows",
-        .linux => "x11",
-        else => "x11",
-    };
-
     exe.linkLibC();
     exe.linkSystemLibrary("X11");
-    const minifb_src_dir = "external/minifb/src";
-    var cFiles: std.ArrayList([]const u8) = .{};
-    try collectFiles(b.allocator, &cFiles, minifb_src_dir, default_backend);
-    defer cFiles.deinit(b.allocator);
-
+    
     exe.addCSourceFiles(.{
        .files = cFiles.items,
        .flags = &.{ "-std=c11", "-Wall", "-Wextra", "-Wno-switch", "-Wno-unused-function", "-Wno-unused-parameter", "-Wno-implicit-fallthrough", "-D_POSIX_C_SOURCE=199309L", "-D_XOPEN_SOURCE=600"},
@@ -69,7 +74,6 @@ pub fn build(b: *std.Build) !void {
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
-
 }
 
 fn collectFiles(allocator: std.mem.Allocator, endBuffer:*std.ArrayList([]const u8), path: []const u8, whitelist: []const u8) !void {
@@ -84,33 +88,8 @@ fn collectFiles(allocator: std.mem.Allocator, endBuffer:*std.ArrayList([]const u
         const extendedPath = try std.fs.path.join(allocator, &.{path, entry.name});
         if(entry.kind == .file and (std.mem.endsWith(u8, entry.name, ".c") )) {
             try endBuffer.append(allocator, extendedPath);
-            std.debug.print("added {s}\n", .{entry.name});
         } else if (entry.kind == .directory and std.mem.endsWith(u8, entry.name, whitelist)) {
-            std.debug.print("opening dir {s}\n", .{entry.name});
             try collectFiles(allocator, endBuffer, extendedPath, whitelist); 
         }
     }
-}
-
-const Backend = enum {
-    x11,
-    wayland,
-    windows,
-    web,
-    unknown,
-};
-const Map = std.StaticStringMap(Backend);
-const BACKENDS = Map.initComptime(.{
-    .{ "x11",     .x11     },
-    .{ "wayland", .wayland },
-    .{ "windows", .windows },
-    .{ "web",     .web     },
-
-    .{ "win",     .windows },
-    .{ "wl",      .wayland },
-});
-fn parseBackend(s: []const u8) Backend {
-    var buf: [32]u8 = undefined;
-    const lower = std.ascii.lowerString(&buf, s);
-    return BACKENDS.get(lower) orelse .unknown;
 }
