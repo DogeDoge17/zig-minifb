@@ -1,9 +1,5 @@
 const std = @import("std");
 
-const Application = struct {
-            
-};
-
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -22,10 +18,12 @@ pub fn build(b: *std.Build) !void {
         try std.fs.cwd().realpathAlloc(b.allocator, "."),
     });
 
-    const minifb_src_dir = "external/minifb/src";
+    const minifb_src_dir = b.path("external/minifb/src").getPath(b);
     var cFiles: std.ArrayList([]const u8) = .{};
-    try collectFiles(b.allocator, &cFiles, minifb_src_dir, default_backend);
-    defer cFiles.deinit(b.allocator);
+
+    var minifb_dir = try std.fs.openDirAbsolute(minifb_src_dir, .{ .iterate = true, .access_sub_paths = true });
+    defer minifb_dir.close();
+    try collectFiles2(b.allocator, &cFiles, &minifb_dir, "external/minifb/src", default_backend);
     
     const exe = b.addExecutable(.{
         .name = "zig_minifb",
@@ -80,11 +78,27 @@ pub fn build(b: *std.Build) !void {
     test_step.dependOn(&run_exe_tests.step);
 }
 
+fn collectFiles2(
+    allocator: std.mem.Allocator, endBuffer: *std.ArrayList([]const u8), dir: *std.fs.Dir, path: []const u8, whitelist: []const u8,
+) !void {
+    var it = dir.iterate();
+    while (try it.next()) |entry| {
+        const extendedPath = try std.fs.path.join(allocator, &.{ path, entry.name });
+        if (entry.kind == .file and std.mem.endsWith(u8, entry.name, ".c")) {
+            try endBuffer.append(allocator, extendedPath);
+        } else if (entry.kind == .directory and std.mem.endsWith(u8, entry.name, whitelist)) {
+            var subdir = try dir.openDir(entry.name, .{ .iterate = true, .access_sub_paths = true });
+            defer subdir.close();
+            try collectFiles2(allocator, endBuffer, &subdir, extendedPath, whitelist);
+        }
+    }
+}
+
 fn collectFiles(allocator: std.mem.Allocator, endBuffer:*std.ArrayList([]const u8), path: []const u8, whitelist: []const u8) !void {
     std.log.info("Current working directory: {s}", .{
         try std.fs.cwd().realpathAlloc(allocator, path),
     });
-     var iterable_dir = std.fs.cwd().openDir(path, .{
+    var iterable_dir = std.fs.cwd().openDir(path, .{
         .iterate = true,
         .access_sub_paths = true,
     }) catch @panic("failed to open dir");
