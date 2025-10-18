@@ -18,6 +18,10 @@ pub fn build(b: *std.Build) !void {
         .linux => "x11",
         else => "x11",
     };
+    std.log.info("Current working directory: {s}", .{
+        try std.fs.cwd().realpathAlloc(b.allocator, "."),
+    });
+
     const minifb_src_dir = "external/minifb/src";
     var cFiles: std.ArrayList([]const u8) = .{};
     try collectFiles(b.allocator, &cFiles, minifb_src_dir, default_backend);
@@ -77,6 +81,9 @@ pub fn build(b: *std.Build) !void {
 }
 
 fn collectFiles(allocator: std.mem.Allocator, endBuffer:*std.ArrayList([]const u8), path: []const u8, whitelist: []const u8) !void {
+    std.log.info("Current working directory: {s}", .{
+        try std.fs.cwd().realpathAlloc(allocator, path),
+    });
      var iterable_dir = std.fs.cwd().openDir(path, .{
         .iterate = true,
         .access_sub_paths = true,
