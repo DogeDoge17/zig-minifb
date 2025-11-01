@@ -5,7 +5,7 @@ const BuildWHATEVER = struct {
     flags: []const []const u8,
 };
 
-const cPath = "external/minifb/src/";
+const cPath = "vendor/minifb/src/";
 fn getPlatformOptions(target: std.Target, wayland: bool ) BuildWHATEVER {
     const notWindows = &.{ "-std=c11","-Wall", "-Wextra", "-Wno-switch", "-Wno-unused-function", "-Wno-unused-parameter", "-Wno-implicit-fallthrough", "-D_POSIX_C_SOURCE=199309L", "-D_XOPEN_SOURCE=600" };
 
@@ -40,25 +40,21 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .link_libc = true,
     });
-    minifb_mod.addIncludePath(b.path("external/minifb/include"));
-    minifb_mod.addIncludePath(b.path("external/minifb/src"));
+    minifb_mod.addIncludePath(b.path("vendor/minifb/include"));
+    minifb_mod.addIncludePath(b.path("vendor/minifb/src"));
 
     const lib = b.addLibrary(.{
         .name = "minifb",
         .root_module = minifb_mod,
         .linkage = .static,
     });
-    
-    const wayvar = try std.process.getEnvVarOwned(b.allocator, "XDG_SESSION_TYPE");
-    const wayland = target.result.os.tag == .linux and std.mem.eql(u8, wayvar, "wayland");
 
-    std.debug.print("{}", .{wayland});
-
+    const wayland = b.option(bool, "wayland", "Build for Wayland instead of X11") orelse false;
     const linkOptions = getPlatformOptions(target.result, wayland);
 
     lib.addCSourceFiles(.{ .files = linkOptions.cfiles, .flags = linkOptions.flags });
-    lib.addIncludePath(b.path("external/minifb/include"));
-    lib.addIncludePath(b.path("external/minifb/src"));
+    lib.addIncludePath(b.path("vendor/minifb/include"));
+    lib.addIncludePath(b.path("vendor/minifb/src"));
     lib.linkLibC();
 
     switch(target.result.os.tag) {
