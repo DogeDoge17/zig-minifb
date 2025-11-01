@@ -1,4 +1,5 @@
 const minifb = @import("root.zig");
+const std = @import("std");
 
 pub fn main() !void {
 
@@ -24,8 +25,9 @@ pub fn main() !void {
             seed >>= 1;
             seed |= carry << 30;
             noise &= 0xFF;
-            buffer[i] = (0xff << 32) | (noise << 16) | (noise << 8) | noise;
+            buffer[i] = minifb.argb(0xff, noise, noise, noise);
         }
+       
 
         const state = window.updateEx(buffer, 800, 600);
         if (state < 0) {

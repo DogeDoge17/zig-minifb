@@ -1,5 +1,5 @@
 const std = @import("std");
-const minifb = @import("root.zig");
+const minifb = @import("minifb");
 
 pub fn main() !void {
     var window = minifb.Window.openEx("my display", 800, 600, .resizable) catch |err| {

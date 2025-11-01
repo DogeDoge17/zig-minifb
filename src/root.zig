@@ -1,12 +1,16 @@
 const std = @import("std");
 
-const c = @cImport({
+pub const c = @cImport({
     @cInclude("MiniFB.h");
 });
 
+pub fn argb(a: u32, r: u32, g: u32, b: u32) u32 {
+    return ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
+}
+
 pub const UpdateState = enum(c.mfb_update_state){
-    ok = c.STATE_OK, 
-    exit = c.STATE_EXIT,
+    ok             = c.STATE_OK, 
+    exit           = c.STATE_EXIT,
     invalid_window = c.STATE_INVALID_WINDOW,
     invalid_buffer = c.STATE_INVALID_BUFFER,
     internal_error = c.STATE_INTERNAL_ERROR,
@@ -42,16 +46,16 @@ pub const Key = enum(c.mfb_key) {
     Minus         = c.KB_KEY_MINUS,
     Period        = c.KB_KEY_PERIOD,
     Slash         = c.KB_KEY_SLASH,
-    Num0            = c.KB_KEY_0,
-    Num1            = c.KB_KEY_1,
-    Num2            = c.KB_KEY_2,
-    Num3            = c.KB_KEY_3,
-    Num4            = c.KB_KEY_4,
-    Num5            = c.KB_KEY_5,
-    Num6            = c.KB_KEY_6,
-    Num7            = c.KB_KEY_7,
-    Num8            = c.KB_KEY_8,
-    Num9            = c.KB_KEY_9,
+    Num0          = c.KB_KEY_0,
+    Num1          = c.KB_KEY_1,
+    Num2          = c.KB_KEY_2,
+    Num3          = c.KB_KEY_3,
+    Num4          = c.KB_KEY_4,
+    Num5          = c.KB_KEY_5,
+    Num6          = c.KB_KEY_6,
+    Num7          = c.KB_KEY_7,
+    Num8          = c.KB_KEY_8,
+    Num9          = c.KB_KEY_9,
     Semicolon     = c.KB_KEY_SEMICOLON,
     Equal         = c.KB_KEY_EQUAL,
     A             = c.KB_KEY_A,
@@ -157,6 +161,16 @@ pub const Key = enum(c.mfb_key) {
     RightSuper    = c.KB_KEY_RIGHT_SUPER,
     Menu          = c.KB_KEY_MENU,
 };
+pub const KeyMod = enum(c.mfb_key_mod) { 
+    Shift = c.KB_MOD_SHIFT, 
+    Control = c.KB_MOD_CONTROL, 
+    Alt = c.KB_MOD_ALT, 
+    Super = c.KB_MOD_SUPER, 
+    CapsLock = c.KB_MOD_CAPS_LOCK,
+    NumLock = c.KB_MOD_NUM_LOCK,
+};
+
+pub const cWindow = c.struct_mfb_window;
 pub const Window = struct {
     ptr: *c.struct_mfb_window,
 
@@ -250,36 +264,43 @@ pub const Window = struct {
         return c.mfb_wait_sync(self.ptr);
     }
 
-    pub fn onActive(self: *Window, cb: ?c.mfb_active_func) void {
-        c.mfb_set_active_callback(self.ptr, cb);
+    const active_func = *const fn(window: *c.struct_mfb_window, is_active: bool) callconv(.c) void;
+    pub fn onActive(self: *Window, cb: ?active_func) void {
+        c.mfb_set_active_callback(self.ptr, @as(c.mfb_active_func, @ptrCast(@constCast(cb))));
     }
 
-    pub fn onResize(self: *Window, cb: ?c.mfb_resize_func) void {
-        c.mfb_set_resize_callback(self.ptr, cb);
+    const resize_func = *const fn(window: *c.struct_mfb_window, width: i32, height: i32) callconv(.c) void;
+    pub fn onResize(self: *Window, cb: ?resize_func) void {
+        c.mfb_set_resize_callback(self.ptr, @as(c.mfb_resize_func, @ptrCast(@constCast(cb))));
     }
 
-    pub fn onClose(self: *Window, cb: ?c.mfb_close_func) void {
-        c.mfb_set_close_callback(self.ptr, cb);
+    const close_func = *const fn(window: *c.struct_mfb_window) callconv(.c) bool;
+    pub fn onClose(self: *Window, cb: ?close_func) void {
+        c.mfb_set_close_callback(self.ptr, @as(c.mfb_close_func, @ptrCast(@constCast(cb))));
     }
 
-    pub fn onKeyboard(self: *Window, cb: ?c.mfb_keyboard_func) void {
-        c.mfb_set_keyboard_callback(self.ptr, cb);
+    const keyboard_func = *const fn(window: *c.struct_mfb_window, key: Key, mod: KeyMod, pressed: c.bool) callconv(.c) void;
+    pub fn onKeyboard(self: *Window, cb: ?keyboard_func) void {
+        c.mfb_set_keyboard_callback(self.ptr, @as(c.mfb_keyboard_func ,@ptrCast(@constCast(cb))));
     }
 
-    pub fn onCharInput(self: *Window, cb: ?c.mfb_char_input_func) void {
-        c.mfb_set_char_input_callback(self.ptr, cb);
+    const char_input_func = *const fn(window: *c.struct_mfb_window, code: i32) callconv(.c) void;
+    pub fn onCharInput(self: *Window, cb: ?char_input_func) void {
+        c.mfb_set_char_input_callback(self.ptr, @as(c.mfb_char_input_func, @ptrCast(@constCast(cb))));
     }
 
-    pub fn onMouseButton(self: *Window, cb: ?c.mfb_mouse_button_func) void {
-        c.mfb_set_mouse_button_callback(self.ptr, cb);
+    const mouse_button_func = *const fn(window: *c.struct_mfb_window, button: MouseButton, mod: KeyMod, is_pressed: bool) callconv(.c) void;
+    pub fn onMouseButton(self: *Window, cb: ?mouse_button_func) void {
+        c.mfb_set_mouse_button_callback(self.ptr, @as(c.mfb_mouse_button_func, @ptrCast(@constCast(cb))));
     }
 
-    pub fn onMouseMove(self: *Window, cb: ?c.mfb_mouse_move_func) void {
-        c.mfb_set_mouse_move_callback(self.ptr, cb);
+    const mouse_move_func = *const fn(window: *c.struct_mfb_window, x: i32, y: i32) callconv(.c) void;
+    pub fn onMouseMove(self: *Window, cb: ?mouse_move_func) void {
+        c.mfb_set_mouse_move_callback(self.ptr, @as(c.mfb_mouse_move_func, @ptrCast(@constCast(cb))));
     }
 
-    pub fn onMouseScroll(self: *Window, cb: ?c.mfb_mouse_scroll_func) void {
-        c.mfb_set_mouse_scroll_callback(self.ptr, cb);
+    const mouse_scroll_func = *const fn(window: *c.struct_mfb_window, mod: KeyMod, delta_x: f32, delta_y: f32) callconv(.c) void;
+    pub fn onMouseScroll(self: *Window, cb: ?mouse_scroll_func) void {
+        c.mfb_set_mouse_scroll_callback(self.ptr, @as(c.mfb_mouse_scroll_func, @ptrCast(@constCast(cb))));
     }
 };
-
