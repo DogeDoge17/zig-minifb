@@ -5,7 +5,7 @@ const BuildWHATEVER = struct {
     flags: []const []const u8,
 };
 
-const cPath = "vendor/minifb/src/";
+const cPath = "src/";
 fn getPlatformOptions(target: std.Target, wayland: bool ) BuildWHATEVER {
     const notWindows = &.{ "-std=c11","-Wall", "-Wextra", "-Wno-switch", "-Wno-unused-function", "-Wno-unused-parameter", "-Wno-implicit-fallthrough", "-D_POSIX_C_SOURCE=199309L", "-D_XOPEN_SOURCE=600" };
 
@@ -40,8 +40,8 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .link_libc = true,
     });
-    minifb_mod.addIncludePath(b.path("vendor/minifb/include"));
-    minifb_mod.addIncludePath(b.path("vendor/minifb/src"));
+    minifb_mod.addIncludePath(b.path("src/include"));
+    minifb_mod.addIncludePath(b.path("src"));
 
     const lib = b.addLibrary(.{
         .name = "minifb",
@@ -53,8 +53,8 @@ pub fn build(b: *std.Build) !void {
     const linkOptions = getPlatformOptions(target.result, wayland);
 
     lib.addCSourceFiles(.{ .files = linkOptions.cfiles, .flags = linkOptions.flags });
-    lib.addIncludePath(b.path("vendor/minifb/include"));
-    lib.addIncludePath(b.path("vendor/minifb/src"));
+    lib.addIncludePath(b.path("src/include"));
+    lib.addIncludePath(b.path("src"));
     lib.linkLibC();
 
     switch(target.result.os.tag) {
