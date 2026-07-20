@@ -6,25 +6,24 @@ const BuildWHATEVER = struct {
 };
 
 const cPath = "src/";
-fn getPlatformOptions(target: std.Target, wayland: bool ) BuildWHATEVER {
-    const notWindows = &.{ "-std=c11","-Wall", "-Wextra", "-Wno-switch", "-Wno-unused-function", "-Wno-unused-parameter", "-Wno-implicit-fallthrough", "-D_POSIX_C_SOURCE=199309L", "-D_XOPEN_SOURCE=600" };
+fn getPlatformOptions(target: std.Target, wayland: bool) BuildWHATEVER {
+    const notWindows = &.{ "-std=c11", "-Wall", "-Wextra", "-Wno-switch", "-Wno-unused-function", "-Wno-unused-parameter", "-Wno-implicit-fallthrough", "-D_POSIX_C_SOURCE=199309L", "-D_XOPEN_SOURCE=600" };
 
     return switch (target.os.tag) {
         .windows => .{
             .cfiles = &.{ cPath ++ "windows/WinMiniFB.c", cPath ++ "MiniFB_common.c", cPath ++ "MiniFB_internal.c", cPath ++ "MiniFB_timer.c" },
-            .flags = &.{ "-std=c11","-Wall", "-Wextra", "-Wno-switch", "-Wno-unused-function", "-Wno-unused-parameter", "-Wno-implicit-fallthrough", "-DWIN32", "-D_CRT_SECURE_NO_WARNINGS", "-D_CRT_SECURE_NO_WARNINGS" },
+            .flags = &.{ "-std=c11", "-Wall", "-Wextra", "-Wno-switch", "-Wno-unused-function", "-Wno-unused-parameter", "-Wno-implicit-fallthrough", "-DWIN32", "-D_CRT_SECURE_NO_WARNINGS", "-D_CRT_SECURE_NO_WARNINGS" },
         },
         .macos => .{
-            .cfiles = &.{ cPath ++ "macos/MacMiniFB.m", cPath ++ "macos/OSXView.m", cPath ++ "macos/OSXWindow.m", cPath ++ "macos/OSXViewDelegate.m", cPath ++ "MiniFB_common.c", cPath ++ "MiniFB_internal.c", cPath ++ "MiniFB_timer.c"},
+            .cfiles = &.{ cPath ++ "macos/MacMiniFB.m", cPath ++ "macos/OSXView.m", cPath ++ "macos/OSXWindow.m", cPath ++ "macos/OSXViewDelegate.m", cPath ++ "MiniFB_common.c", cPath ++ "MiniFB_internal.c", cPath ++ "MiniFB_timer.c" },
             .flags = notWindows,
         },
-        .linux => .{ 
-            .cfiles = if (!wayland) &.{ cPath ++ "x11/X11MiniFB.c", cPath ++ "MiniFB_linux.c", cPath ++ "MiniFB_common.c", cPath ++ "MiniFB_internal.c", cPath ++ "MiniFB_timer.c" }
-                else &.{ cPath ++ "wayland/generated/xdg-shell-protocol.c", cPath ++ "wayland/WaylandMiniFB.c", cPath ++ "MiniFB_linux.c", cPath ++ "MiniFB_common.c", cPath ++ "MiniFB_internal.c", cPath ++ "MiniFB_timer.c" } ,
+        .linux => .{
+            .cfiles = if (!wayland) &.{ cPath ++ "x11/X11MiniFB.c", cPath ++ "MiniFB_linux.c", cPath ++ "MiniFB_common.c", cPath ++ "MiniFB_internal.c", cPath ++ "MiniFB_timer.c" } else &.{ cPath ++ "wayland/generated/xdg-shell-protocol.c", cPath ++ "wayland/WaylandMiniFB.c", cPath ++ "MiniFB_linux.c", cPath ++ "MiniFB_common.c", cPath ++ "MiniFB_internal.c", cPath ++ "MiniFB_timer.c" },
             .flags = notWindows,
         },
         else => .{
-            .cfiles = &.{ cPath ++ "x11/X11MiniFB.c",  cPath ++ "MiniFB_linux.c", cPath ++ "MiniFB_common.c", cPath ++ "MiniFB_internal.c", cPath ++ "MiniFB_timer.c"},
+            .cfiles = &.{ cPath ++ "x11/X11MiniFB.c", cPath ++ "MiniFB_linux.c", cPath ++ "MiniFB_common.c", cPath ++ "MiniFB_internal.c", cPath ++ "MiniFB_timer.c" },
             .flags = notWindows,
         },
     };
@@ -52,29 +51,28 @@ pub fn build(b: *std.Build) !void {
     const wayland = b.option(bool, "wayland", "Build for Wayland instead of X11") orelse false;
     const linkOptions = getPlatformOptions(target.result, wayland);
 
-    lib.addCSourceFiles(.{ .files = linkOptions.cfiles, .flags = linkOptions.flags });
-    lib.addIncludePath(b.path("src/include"));
-    lib.addIncludePath(b.path("src"));
-    lib.linkLibC();
+    lib.root_module.addCSourceFiles(.{ .files = linkOptions.cfiles, .flags = linkOptions.flags });
+    lib.root_module.addIncludePath(b.path("src/include"));
+    lib.root_module.addIncludePath(b.path("src"));
+    lib.root_module.link_libc = true;
 
-    switch(target.result.os.tag) {
+    switch (target.result.os.tag) {
         .linux => {
             if (wayland) {
-                lib.linkSystemLibrary("wayland-client");
-                lib.linkSystemLibrary("wayland-cursor");
-                lib.linkSystemLibrary("wayland-egl");
-            } else 
-                lib.linkSystemLibrary("X11");
+                lib.root_module.linkSystemLibrary("wayland-client", .{});
+                lib.root_module.linkSystemLibrary("wayland-cursor", .{});
+                lib.root_module.linkSystemLibrary("wayland-egl", .{});
+            } else lib.root_module.linkSystemLibrary("X11", .{});
         },
         .windows => {
-            lib.linkSystemLibrary("gdi32");
-            lib.linkSystemLibrary("user32");
-            lib.linkSystemLibrary("winmm");
+            lib.root_module.linkSystemLibrary("gdi32", .{});
+            lib.root_module.linkSystemLibrary("user32", .{});
+            lib.root_module.linkSystemLibrary("winmm", .{});
         },
         .macos => {
-            lib.linkFramework("Cocoa");
-            lib.linkFramework("QuartzCore");
-            lib.linkFramework("OpenGL");
+            lib.root_module.linkFramework("Cocoa", .{});
+            lib.root_module.linkFramework("QuartzCore", .{});
+            lib.root_module.linkFramework("OpenGL", .{});
         },
         else => {},
     }
@@ -88,7 +86,7 @@ pub fn build(b: *std.Build) !void {
             .target = target,
             .optimize = optimize,
             .link_libc = true,
-            .imports = &.{ .{ .name = "minifb", .module = minifb_mod } },
+            .imports = &.{.{ .name = "minifb", .module = minifb_mod }},
         }),
     });
     b.installArtifact(exe);
