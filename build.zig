@@ -62,7 +62,10 @@ pub fn build(b: *std.Build) !void {
                 lib.root_module.linkSystemLibrary("wayland-client", .{});
                 lib.root_module.linkSystemLibrary("wayland-cursor", .{});
                 lib.root_module.linkSystemLibrary("wayland-egl", .{});
-            } else lib.root_module.linkSystemLibrary("X11", .{});
+            } else {
+                lib.root_module.linkSystemLibrary("X11", .{});
+                lib.root_module.linkSystemLibrary("xkbcommon", .{});
+            }
         },
         .windows => {
             lib.root_module.linkSystemLibrary("gdi32", .{});
