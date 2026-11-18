@@ -1,8 +1,6 @@
 const std = @import("std");
 
-pub const c = @cImport({
-    @cInclude("MiniFB.h");
-});
+pub const c = @import("minifb_c");
 
 pub fn argb(a: u32, r: u32, g: u32, b: u32) u32 {
     return ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);

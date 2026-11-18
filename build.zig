@@ -33,11 +33,18 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const c_bindings = b.addTranslateC(.{
+        .root_source_file = b.path("src/include/MiniFB.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const minifb_mod = b.addModule("minifb", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
         .link_libc = true,
+        .imports = &.{.{ .name = "minifb_c", .module = c_bindings.createModule() }},
     });
     minifb_mod.addIncludePath(b.path("src/include"));
     minifb_mod.addIncludePath(b.path("src"));
@@ -98,7 +105,7 @@ pub fn build(b: *std.Build) !void {
     const run_cmd = b.addRunArtifact(exe);
     run_step.dependOn(&run_cmd.step);
     run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| run_cmd.addArgs(args);
+    run_cmd.addPassthruArgs();
 
     const mod_tests = b.addTest(.{ .root_module = minifb_mod });
     const run_mod_tests = b.addRunArtifact(mod_tests);
